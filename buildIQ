@@ -1,1345 +1,1659 @@
-import { useState, useEffect, useRef } from "react";
-
-const COLORS = {
-  bg: "#0D0F14",
-  surface: "#13161D",
-  card: "#191C25",
-  cardHover: "#1E2230",
-  border: "#252A38",
-  accent: "#F5A623",
-  accentDim: "#C4841B",
-  accentGlow: "rgba(245,166,35,0.15)",
-  green: "#22C55E",
-  greenDim: "rgba(34,197,94,0.12)",
-  red: "#EF4444",
-  redDim: "rgba(239,68,68,0.12)",
-  blue: "#3B82F6",
-  blueDim: "rgba(59,130,246,0.12)",
-  purple: "#A855F7",
-  purpleDim: "rgba(168,85,247,0.12)",
-  text: "#F1F3F9",
-  textSub: "#8B92A5",
-  textMuted: "#525869",
-};
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
-  
-  * { margin:0; padding:0; box-sizing:border-box; }
-  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BuildOps — Construction Management for the Field</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
   :root {
-    --bg: ${COLORS.bg};
-    --surface: ${COLORS.surface};
-    --card: ${COLORS.card};
-    --border: ${COLORS.border};
-    --accent: ${COLORS.accent};
-    --text: ${COLORS.text};
-    --text-sub: ${COLORS.textSub};
-    --text-muted: ${COLORS.textMuted};
-    --green: ${COLORS.green};
-    --red: ${COLORS.red};
-    --blue: ${COLORS.blue};
+    --ink: #0d0d0d;
+    --orange: #f4500a;
+    --orange-light: #ff6b2b;
+    --sand: #f5f0e8;
+    --warm-white: #faf8f4;
+    --muted: #888070;
+    --border: #e0d8cc;
+    --dark-card: #141210;
     --radius: 12px;
   }
 
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
-  
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: var(--surface); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .app { display:flex; min-height:100vh; }
+  html { scroll-behavior: smooth; }
 
-  /* SIDEBAR */
-  .sidebar {
-    width: 240px; min-height: 100vh; background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column;
-    position: fixed; left:0; top:0; bottom:0; z-index:100;
-    transition: transform 0.3s ease;
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--warm-white);
+    color: var(--ink);
+    overflow-x: hidden;
+    font-size: 16px;
+    line-height: 1.6;
   }
-  .sidebar-logo {
-    padding: 24px 20px 20px;
+
+  /* ─── NOISE TEXTURE ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.5;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 18px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(250,248,244,0.88);
+    backdrop-filter: blur(18px);
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
+    transition: background 0.3s;
   }
-  .logo-icon {
-    width: 34px; height: 34px; background: var(--accent);
-    border-radius: 8px; display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #000;
-  }
-  .logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); }
-  .logo-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 1px; }
 
-  .sidebar-nav { flex:1; padding: 16px 12px; overflow-y: auto; }
-  .nav-section-label {
-    font-size: 10px; font-weight: 600; color: var(--text-muted);
-    letter-spacing: 1.2px; text-transform: uppercase;
-    padding: 8px 8px 6px; margin-top: 8px;
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 10px; border-radius: 8px; cursor: pointer;
-    font-size: 13.5px; font-weight: 400; color: var(--text-sub);
-    transition: all 0.15s ease; margin-bottom: 2px; position: relative;
-    border: 1px solid transparent;
-  }
-  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
-  .nav-item.active {
-    background: ${COLORS.accentGlow}; color: var(--accent);
-    border-color: rgba(245,166,35,0.2); font-weight: 500;
-  }
-  .nav-item.active .nav-icon { color: var(--accent); }
-  .nav-badge {
-    margin-left: auto; background: var(--accent); color: #000;
-    font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px;
-  }
-  .nav-icon { width: 16px; text-align: center; flex-shrink: 0; }
 
-  .sidebar-footer {
-    padding: 16px 12px; border-top: 1px solid var(--border);
-  }
-  .user-card {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px; border-radius: 8px; cursor: pointer;
-    transition: background 0.15s;
-  }
-  .user-card:hover { background: rgba(255,255,255,0.04); }
-  .user-avatar {
-    width: 32px; height: 32px; border-radius: 50%;
-    background: linear-gradient(135deg, ${COLORS.accent} 0%, ${COLORS.accentDim} 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; color: #000; flex-shrink: 0;
-  }
-  .user-name { font-size: 13px; font-weight: 500; color: var(--text); }
-  .user-role { font-size: 11px; color: var(--text-muted); }
+  .logo-dot { color: var(--orange); }
 
-  /* MAIN */
-  .main { margin-left: 240px; flex:1; min-height: 100vh; }
-  .topbar {
-    height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; padding: 0 28px; gap: 16px; position: sticky; top:0; z-index:50;
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    list-style: none;
   }
-  .topbar-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); flex:1; }
-  .topbar-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-family: 'DM Sans'; font-weight: 300; }
-  .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
-    cursor: pointer; transition: all 0.15s ease; border: none; font-family: 'DM Sans', sans-serif;
+
+  .nav-links a {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
   }
-  .btn-primary { background: var(--accent); color: #000; }
-  .btn-primary:hover { background: #FFB930; transform: translateY(-1px); }
-  .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text-sub); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-  .btn-sm { padding: 6px 12px; font-size: 12px; }
-  .btn-icon { padding: 8px; }
 
-  .content { padding: 28px; }
+  .nav-links a:hover { opacity: 1; }
 
-  /* STAT CARDS */
-  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-  .stat-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 20px; position: relative; overflow: hidden; cursor: pointer;
-    transition: all 0.2s ease;
+  .nav-cta {
+    background: var(--ink);
+    color: var(--warm-white) !important;
+    opacity: 1 !important;
+    padding: 10px 22px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s !important;
   }
-  .stat-card:hover { border-color: rgba(245,166,35,0.3); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-  .stat-card::before {
-    content:''; position:absolute; top:0; right:0; width:80px; height:80px;
-    border-radius: 50%; opacity: 0.06; transform: translate(20px,-20px);
+
+  .nav-cta:hover { background: var(--orange) !important; }
+
+  /* ─── HERO ─── */
+  .hero {
+    min-height: 100vh;
+    padding: 140px 48px 80px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    max-width: 1280px;
+    margin: 0 auto;
+    position: relative;
   }
-  .stat-card.yellow::before { background: var(--accent); }
-  .stat-card.green::before { background: var(--green); }
-  .stat-card.blue::before { background: var(--blue); }
-  .stat-card.red::before { background: var(--red); }
-  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 10px; }
-  .stat-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 8px; }
-  .stat-delta { font-size: 12px; display: flex; align-items: center; gap: 4px; }
-  .delta-up { color: var(--green); }
-  .delta-down { color: var(--red); }
-  .stat-icon { position: absolute; top: 18px; right: 18px; font-size: 20px; opacity: 0.5; }
 
-  /* GRID LAYOUTS */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff3ed;
+    border: 1px solid #ffd4bc;
+    color: var(--orange);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
 
-  /* CARDS */
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  .hero-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--orange);
+    border-radius: 50%;
+    animation: pulse 1.6s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 5vw, 68px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    animation: fadeUp 0.7s 0.1s ease both;
+    color: var(--ink);
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--orange);
+    position: relative;
+  }
+
+  h1 em::after {
+    content: '';
+    position: absolute;
+    bottom: 2px; left: 0; right: 0;
+    height: 3px;
+    background: var(--orange);
+    opacity: 0.3;
+    border-radius: 2px;
+  }
+
+  .hero-sub {
+    margin-top: 24px;
+    font-size: 18px;
+    color: #4a4540;
+    max-width: 480px;
+    font-weight: 400;
+    line-height: 1.7;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .hero-actions {
+    margin-top: 40px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    animation: fadeUp 0.7s 0.3s ease both;
+  }
+
+  .btn-primary {
+    background: var(--orange);
+    color: #fff;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(244,80,10,0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary:hover {
+    background: var(--orange-light);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(244,80,10,0.4);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    padding: 16px 28px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--ink);
+    background: rgba(13,13,13,0.04);
+  }
+
+  .hero-trust {
+    margin-top: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--muted);
+    animation: fadeUp 0.7s 0.4s ease both;
+  }
+
+  .trust-avatars {
+    display: flex;
+  }
+
+  .trust-avatars span {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--warm-white);
+    margin-left: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .trust-avatars span:nth-child(1) { background: #c0392b; margin-left: 0; }
+  .trust-avatars span:nth-child(2) { background: #2980b9; }
+  .trust-avatars span:nth-child(3) { background: #27ae60; }
+  .trust-avatars span:nth-child(4) { background: #8e44ad; }
+
+  /* ─── HERO VISUAL ─── */
+  .hero-visual {
+    position: relative;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .dashboard-card {
+    background: var(--ink);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.06);
+    position: relative;
     overflow: hidden;
   }
-  .card-header {
-    padding: 18px 20px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
+
+  .dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(244,80,10,0.3) 0%, transparent 70%);
+    pointer-events: none;
   }
-  .card-title { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; color: var(--text); }
-  .card-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .card-body { padding: 20px; }
 
-  /* PROJECT LIST */
-  .project-item {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 20px; border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: background 0.15s;
-  }
-  .project-item:last-child { border-bottom: none; }
-  .project-item:hover { background: rgba(255,255,255,0.02); }
-  .project-color { width: 4px; height: 42px; border-radius: 2px; flex-shrink: 0; }
-  .project-name { font-size: 13.5px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
-  .project-meta { font-size: 11.5px; color: var(--text-muted); }
-  .project-right { margin-left: auto; text-align: right; }
-  .project-budget { font-size: 13px; font-weight: 600; color: var(--text); font-family: 'Syne', sans-serif; }
-  .project-date { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-
-  /* STATUS BADGE */
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500;
-  }
-  .badge-green { background: ${COLORS.greenDim}; color: var(--green); }
-  .badge-yellow { background: ${COLORS.accentGlow}; color: var(--accent); }
-  .badge-red { background: ${COLORS.redDim}; color: var(--red); }
-  .badge-blue { background: ${COLORS.blueDim}; color: var(--blue); }
-  .badge-purple { background: ${COLORS.purpleDim}; color: ${COLORS.purple}; }
-  .badge::before { content:''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-
-  /* PROGRESS BAR */
-  .progress-wrap { background: rgba(255,255,255,0.06); border-radius: 99px; height: 5px; overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
-
-  /* CASH FLOW CHART */
-  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding: 0 4px; }
-  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .chart-bar { width: 100%; border-radius: 4px 4px 0 0; transition: opacity 0.2s; cursor: pointer; }
-  .chart-bar:hover { opacity: 0.8; }
-  .chart-label { font-size: 10px; color: var(--text-muted); }
-
-  /* ACTIVITY FEED */
-  .activity-item { display: flex; gap: 12px; padding: 12px 0; }
-  .activity-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-  .activity-text { font-size: 13px; color: var(--text-sub); line-height: 1.5; }
-  .activity-text strong { color: var(--text); font-weight: 500; }
-  .activity-time { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-
-  /* TASK LIST */
-  .task-item {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
-    cursor: pointer;
-  }
-  .task-item:last-child { border-bottom: none; }
-  .task-checkbox {
-    width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 4px;
-    flex-shrink: 0; margin-top: 1px; transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .task-checkbox.checked { background: var(--green); border-color: var(--green); }
-  .task-name { font-size: 13px; color: var(--text-sub); flex: 1; line-height: 1.4; }
-  .task-name.done { text-decoration: line-through; color: var(--text-muted); }
-  .task-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .task-priority { flex-shrink: 0; font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
-  .priority-high { background: ${COLORS.redDim}; color: var(--red); }
-  .priority-med { background: ${COLORS.accentGlow}; color: var(--accent); }
-  .priority-low { background: ${COLORS.blueDim}; color: var(--blue); }
-
-  /* INVOICE TABLE */
-  .table { width: 100%; border-collapse: collapse; }
-  .table th {
-    text-align: left; font-size: 11px; color: var(--text-muted);
-    font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase;
-    padding: 10px 16px; border-bottom: 1px solid var(--border);
-  }
-  .table td { padding: 13px 16px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .table tr:last-child td { border-bottom: none; }
-  .table tr:hover td { background: rgba(255,255,255,0.02); }
-  .table-amount { font-family: 'Syne', sans-serif; font-weight: 600; }
-
-  /* TEAM */
-  .team-member {
-    display: flex; align-items: center; gap: 12px; padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-  }
-  .team-member:last-child { border-bottom: none; }
-  .member-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; flex-shrink: 0;
-  }
-  .member-name { font-size: 13px; font-weight: 500; color: var(--text); }
-  .member-role { font-size: 11.5px; color: var(--text-muted); }
-  .member-status { margin-left: auto; }
-
-  /* AI PANEL */
-  .ai-panel {
-    background: linear-gradient(135deg, rgba(245,166,35,0.08) 0%, rgba(168,85,247,0.06) 100%);
-    border: 1px solid rgba(245,166,35,0.2); border-radius: var(--radius); padding: 20px;
+  .db-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 24px;
   }
-  .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+
+  .db-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: 0.02em;
+  }
+
+  .db-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .db-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  .db-dots span:nth-child(1) { background: #ff5f57; }
+  .db-dots span:nth-child(2) { background: #febc2e; }
+  .db-dots span:nth-child(3) { background: #28c840; }
+
+  .db-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+
+  .stat-num span { color: var(--orange); }
+  .stat-label { font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .db-projects {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .proj-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.2s;
+  }
+
+  .proj-row:hover { background: rgba(255,255,255,0.09); }
+
+  .proj-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .proj-info { flex: 1; min-width: 0; }
+  .proj-name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .proj-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+  .proj-progress { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .prog-bar { width: 80px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 2px; background: var(--orange); transition: width 1s ease; }
+  .prog-pct { font-size: 11px; font-weight: 700; color: var(--orange); }
+
+  .db-alert {
+    background: rgba(244,80,10,0.12);
+    border: 1px solid rgba(244,80,10,0.25);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .alert-icon { font-size: 16px; }
+  .alert-text { font-size: 12px; color: rgba(255,255,255,0.7); }
+  .alert-text strong { color: #ff8c5a; font-weight: 600; }
+
+  .floating-card {
+    position: absolute;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+  }
+
+  .float-1 {
+    top: -24px; left: -28px;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .float-2 {
+    bottom: -20px; right: -24px;
+    animation: float 3.5s 0.5s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .float-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+  .float-value { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--ink); }
+  .float-green { color: #16a34a; }
+  .float-tag { font-size: 11px; font-weight: 600; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 100px; display: inline-block; margin-top: 4px; }
+
+  /* ─── LOGOS STRIP ─── */
+  .logos-strip {
+    background: var(--sand);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 48px;
+    text-align: center;
+  }
+
+  .logos-strip p { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 20px; }
+
+  .logos-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  .logo-item {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--muted);
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ─── SECTION SHARED ─── */
+  .section { padding: 100px 48px; max-width: 1280px; margin: 0 auto; }
+  .section-tag { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--orange); margin-bottom: 14px; }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 3.5vw, 50px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+  .section-sub { font-size: 18px; color: #5a544c; max-width: 560px; line-height: 1.7; }
+
+  /* ─── PAIN POINTS ─── */
+  .pain-section {
+    background: var(--ink);
+    padding: 100px 48px;
+  }
+
+  .pain-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .pain-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 60px;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .pain-item {
+    background: rgba(255,255,255,0.04);
+    padding: 36px 32px;
+    border: 1px solid rgba(255,255,255,0.07);
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .pain-item:hover { background: rgba(255,255,255,0.07); }
+
+  .pain-emoji { font-size: 32px; margin-bottom: 16px; display: block; }
+  .pain-title { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: rgba(255,255,255,0.9); margin-bottom: 10px; }
+  .pain-desc { font-size: 14px; color: rgba(255,255,255,0.45); line-height: 1.7; }
+
+  .pain-section .section-tag { color: #ff8c5a; }
+  .pain-section .section-title { color: #fff; }
+  .pain-section .section-sub { color: rgba(255,255,255,0.55); }
+
+  /* ─── FEATURES ─── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 60px;
+  }
+
+  .feature-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card:hover {
+    box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+    transform: translateY(-3px);
+    border-color: var(--orange);
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--orange);
+    transform: scaleX(0);
+    transition: transform 0.3s;
+    transform-origin: left;
+  }
+
+  .feature-card:hover::before { transform: scaleX(1); }
+
+  .feat-icon {
+    width: 52px; height: 52px;
+    background: #fff3ed;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .feat-title { font-family: 'Syne', sans-serif; font-size: 19px; font-weight: 700; color: var(--ink); margin-bottom: 10px; letter-spacing: -0.3px; }
+  .feat-desc { font-size: 14px; color: #6b6057; line-height: 1.7; margin-bottom: 16px; }
+
+  .feat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .feat-tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: var(--sand);
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  .feat-tag.ai { background: #fff3ed; color: var(--orange); }
+
+  .feature-card.large { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+
+  .feat-visual {
+    background: var(--ink);
+    border-radius: 12px;
+    padding: 24px;
+    aspect-ratio: 4/3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feat-visual::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(244,80,10,0.4) 0%, transparent 70%);
+  }
+
+  .gantt-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .gantt-label { font-size: 11px; color: rgba(255,255,255,0.5); width: 80px; flex-shrink: 0; font-weight: 500; }
+
+  .gantt-bar-wrap { flex: 1; height: 10px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; }
+
+  .gantt-bar { height: 100%; border-radius: 5px; }
+
+  /* ─── AI SECTION ─── */
+  .ai-section {
+    background: linear-gradient(135deg, #fff8f5 0%, var(--warm-white) 100%);
+    padding: 100px 48px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ai-inner { max-width: 1280px; margin: 0 auto; }
+
+  .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; margin-top: 60px; }
+
+  .ai-features { display: flex; flex-direction: column; gap: 24px; }
+
+  .ai-item {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .ai-item:hover { border-color: var(--orange); box-shadow: 0 4px 20px rgba(244,80,10,0.08); }
+
+  .ai-icon { font-size: 28px; flex-shrink: 0; margin-top: 2px; }
+  .ai-item-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+  .ai-item-desc { font-size: 14px; color: #6b6057; line-height: 1.6; }
+
   .ai-badge {
-    background: var(--accent); color: #000; font-size: 10px; font-weight: 800;
-    padding: 2px 8px; border-radius: 4px; letter-spacing: 1px;
-  }
-  .ai-title { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 14px; color: var(--text); }
-  .ai-alerts { display: flex; flex-direction: column; gap: 8px; }
-  .ai-alert {
-    background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px 14px;
-    display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--text-sub);
-  }
-  .ai-alert-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
-
-  /* GANTT */
-  .gantt-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .gantt-label { width: 140px; font-size: 12.5px; color: var(--text-sub); flex-shrink: 0; }
-  .gantt-track { flex: 1; background: rgba(255,255,255,0.05); border-radius: 3px; height: 20px; position: relative; overflow: hidden; }
-  .gantt-bar { height: 100%; border-radius: 3px; display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.8); position: absolute; }
-  .gantt-pct { width: 36px; font-size: 11px; color: var(--text-muted); text-align: right; flex-shrink: 0; }
-
-  /* MODAL OVERLAY */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
-    display: flex; align-items: center; justify-content: center; padding: 20px;
-    backdrop-filter: blur(4px);
-  }
-  .modal {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto;
-    animation: modalIn 0.2s ease;
-  }
-  @keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
-  .modal-header { padding: 22px 24px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; }
-  .modal-body { padding: 22px 24px; }
-  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
-
-  /* FORM */
-  .form-group { margin-bottom: 16px; }
-  .form-label { font-size: 12px; font-weight: 600; color: var(--text-sub); letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
-  .form-input {
-    width: 100%; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 13px; font-size: 13.5px; color: var(--text);
-    font-family: 'DM Sans', sans-serif; transition: border-color 0.2s; outline: none;
-  }
-  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px ${COLORS.accentGlow}; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  select.form-input { cursor: pointer; }
-
-  /* TABS */
-  .tabs { display: flex; gap: 2px; background: var(--surface); border-radius: 10px; padding: 3px; margin-bottom: 22px; }
-  .tab {
-    flex: 1; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
-    cursor: pointer; text-align: center; color: var(--text-muted); transition: all 0.2s;
-  }
-  .tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-
-  /* NOTIFICATION DOT */
-  .notif-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-    position: absolute; top: 6px; right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--orange);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 100px;
+    margin-left: 8px;
+    vertical-align: middle;
   }
 
-  /* SEARCH */
-  .search-box {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 12px; min-width: 200px;
+  .ai-mockup {
+    background: var(--ink);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+    position: relative;
   }
-  .search-box input {
-    background: none; border: none; outline: none; color: var(--text);
-    font-size: 13px; font-family: 'DM Sans'; width: 100%;
+
+  .chat-bubble {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    max-width: 85%;
   }
-  .search-box input::placeholder { color: var(--text-muted); }
 
-  /* ANIMATIONS */
-  @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
-  .page-enter { animation: fadeIn 0.25s ease; }
-
-  /* METRIC RING */
-  .ring-wrap { display: flex; align-items: center; gap: 14px; }
-  .ring-text { }
-  .ring-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); }
-  .ring-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-
-  /* DIVIDER */
-  .divider { height: 1px; background: var(--border); margin: 16px 0; }
-
-  /* QUICK ACTIONS */
-  .quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-  .quick-action {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s;
+  .chat-user {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+    margin-left: auto;
+    border-bottom-right-radius: 3px;
+    text-align: right;
   }
-  .quick-action:hover { border-color: rgba(245,166,35,0.3); background: var(--cardHover); transform: translateY(-2px); }
-  .qa-icon { font-size: 24px; margin-bottom: 8px; }
-  .qa-label { font-size: 12px; font-weight: 500; color: var(--text-sub); }
 
-  /* EMPTY STATE */
-  .empty { text-align: center; padding: 40px; color: var(--text-muted); }
-  .empty-icon { font-size: 36px; margin-bottom: 12px; }
-  .empty-text { font-size: 14px; }
-`;
+  .chat-ai {
+    background: rgba(244,80,10,0.15);
+    border: 1px solid rgba(244,80,10,0.25);
+    color: rgba(255,255,255,0.85);
+    border-bottom-left-radius: 3px;
+  }
 
-// ─── DATA ───────────────────────────────────────────────────────────────────
-const PROJECTS = [
-  { id:1, name:"Lekki Phase 2 Residential", client:"Zenith Properties", status:"active", progress:67, budget:12500000, spent:8350000, dueDate:"Aug 2026", color:"#F5A623", type:"Residential" },
-  { id:2, name:"Victoria Island Office Complex", client:"First Bank HQ", status:"active", progress:34, budget:45000000, spent:15300000, dueDate:"Mar 2027", color:"#3B82F6", type:"Commercial" },
-  { id:3, name:"Abuja Road Expansion (Km 12–18)", client:"FCT Infrastructure", status:"at-risk", progress:81, budget:78000000, spent:65400000, dueDate:"Jul 2026", color:"#EF4444", type:"Infrastructure" },
-  { id:4, name:"Ikeja GRA Renovation", client:"Private Client", status:"completed", progress:100, budget:3200000, spent:3050000, dueDate:"Apr 2026", color:"#22C55E", type:"Renovation" },
-  { id:5, name:"Port Harcourt Warehouse A", client:"Dangote Logistics", status:"active", progress:18, budget:22000000, spent:3960000, dueDate:"Dec 2026", color:"#A855F7", type:"Industrial" },
-];
+  .chat-ai strong { color: #ff8c5a; }
 
-const INVOICES = [
-  { id:"INV-0041", client:"Zenith Properties", project:"Lekki Phase 2", amount:2500000, status:"paid", date:"Apr 28" },
-  { id:"INV-0042", client:"First Bank HQ", project:"VI Office Complex", amount:8750000, status:"pending", date:"May 2" },
-  { id:"INV-0043", client:"FCT Infrastructure", project:"Abuja Road", amount:15000000, status:"overdue", date:"Apr 15" },
-  { id:"INV-0044", client:"Dangote Logistics", project:"PH Warehouse A", amount:4000000, status:"pending", date:"May 5" },
-  { id:"INV-0045", client:"Private Client", project:"Ikeja Renovation", amount:3200000, status:"paid", date:"Apr 30" },
-];
+  .typing {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px;
+    background: rgba(244,80,10,0.1);
+    border-radius: 10px;
+    width: fit-content;
+    animation: blink 1.5s ease infinite;
+  }
 
-const TASKS = [
-  { id:1, name:"Submit structural drawings — VI Complex floors 3–5", project:"VI Office Complex", priority:"high", due:"Today", done:false },
-  { id:2, name:"Procure reinforcement bars for Lekki Phase 2", project:"Lekki Phase 2", priority:"high", due:"Tomorrow", done:false },
-  { id:3, name:"Complete safety inspection report — Abuja Road", project:"Abuja Road", priority:"med", due:"May 7", done:false },
-  { id:4, name:"Review sub-contractor quote (electrical)", project:"PH Warehouse", priority:"med", due:"May 8", done:false },
-  { id:5, name:"Upload daily progress photos — Lekki", project:"Lekki Phase 2", priority:"low", due:"Today", done:true },
-  { id:6, name:"Send payment reminder — INV-0042", project:"VI Office Complex", priority:"high", due:"Today", done:true },
-];
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--orange);
+    border-radius: 50%;
+  }
 
-const TEAM = [
-  { name:"Emeka Okafor", role:"Project Manager", status:"on-site", initials:"EO", color:"#F5A623" },
-  { name:"Ngozi Adeyemi", role:"Quantity Surveyor", status:"office", initials:"NA", color:"#3B82F6" },
-  { name:"Bello Usman", role:"Site Foreman", status:"on-site", initials:"BU", color:"#22C55E" },
-  { name:"Taiwo Fashola", role:"Civil Engineer", status:"remote", initials:"TF", color:"#A855F7" },
-  { name:"Chidinma Eze", role:"Admin & Finance", status:"office", initials:"CE", color:"#EF4444" },
-];
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
 
-const ACTIVITY = [
-  { text: <><strong>Bello Usman</strong> uploaded 12 photos from Lekki Phase 2 site</>, time:"2 min ago", color:"#F5A623" },
-  { text: <><strong>INV-0041</strong> marked as paid — ₦2.5M received from Zenith Properties</>, time:"1 hr ago", color:"#22C55E" },
-  { text: <><strong>AI Risk Alert:</strong> Abuja Road Km 14–16 showing 11-day delay risk</>, time:"3 hrs ago", color:"#EF4444" },
-  { text: <><strong>Ngozi Adeyemi</strong> updated budget estimate for VI Office Complex (Rev 3)</>, time:"5 hrs ago", color:"#3B82F6" },
-  { text: <><strong>Change Order #7</strong> approved by FCT Infrastructure — +₦1.2M</>, time:"Yesterday", color:"#A855F7" },
-];
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
 
-const GANTT = [
-  { label:"Foundation", start:0, width:25, color:"#F5A623", pct:"100%" },
-  { label:"Structural Frame", start:20, width:35, color:"#3B82F6", pct:"72%" },
-  { label:"MEP Rough-in", start:45, width:25, color:"#A855F7", pct:"10%" },
-  { label:"Cladding & Facade", start:55, width:20, color:"#22C55E", pct:"0%" },
-  { label:"Interior Fit-out", start:70, width:20, color:"#EF4444", pct:"0%" },
-  { label:"Commissioning", start:85, width:15, color:"#F5A623", pct:"0%" },
-];
+  /* ─── PRICING ─── */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 60px;
+    align-items: start;
+  }
 
-const CASHFLOW = [
-  { month:"Nov", income:18.2, expense:12.1 },
-  { month:"Dec", income:22.5, expense:17.8 },
-  { month:"Jan", income:15.0, expense:13.5 },
-  { month:"Feb", income:28.3, expense:19.2 },
-  { month:"Mar", income:31.5, expense:22.0 },
-  { month:"Apr", income:26.8, expense:18.5 },
-  { month:"May", income:34.2, expense:21.3 },
-];
+  .price-card {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
 
-const NAV = [
-  { id:"dashboard", label:"Dashboard", icon:"⬛", section:"main" },
-  { id:"projects", label:"Projects", icon:"🏗", section:"main" },
-  { id:"field", label:"Field Reports", icon:"📱", section:"main", badge:3 },
-  { id:"financials", label:"Financials", icon:"💰", section:"main" },
-  { id:"documents", label:"Documents", icon:"📁", section:"main" },
-  { id:"team", label:"Team", icon:"👥", section:"main" },
-  { id:"ai", label:"AI Assistant", icon:"✦", section:"tools" },
-  { id:"reports", label:"Reports", icon:"📊", section:"tools" },
-  { id:"settings", label:"Settings", icon:"⚙", section:"tools" },
-];
+  .price-card:hover { box-shadow: 0 16px 48px rgba(0,0,0,0.08); }
 
-const fmt = (n) => "₦" + (n >= 1000000 ? (n/1000000).toFixed(1)+"M" : (n/1000).toFixed(0)+"K");
+  .price-card.popular {
+    background: var(--ink);
+    border-color: var(--ink);
+    transform: scale(1.03);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.2);
+  }
 
-// ─── COMPONENTS ──────────────────────────────────────────────────────────────
+  .popular-badge {
+    position: absolute;
+    top: -14px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--orange);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 16px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
 
-function Ring({ pct, size=60, color, children }) {
-  const r = (size/2) - 5;
-  const circ = 2*Math.PI*r;
-  const fill = circ - (circ * pct/100);
-  return (
-    <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={4}/>
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={4}
-        strokeDasharray={circ} strokeDashoffset={fill} strokeLinecap="round"
-        style={{transition:"stroke-dashoffset 1s ease"}}/>
-    </svg>
-  );
-}
+  .plan-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .price-card.popular .plan-name { color: rgba(255,255,255,0.5); }
 
-function NewProjectModal({ onClose }) {
-  return (
-    <div className="modal-overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <div className="modal-title">New Project</div>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}>✕</button>
+  .plan-price {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .price-card.popular .plan-price { color: #fff; }
+
+  .plan-price sup { font-size: 22px; font-weight: 600; vertical-align: super; letter-spacing: 0; }
+  .plan-period { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .price-card.popular .plan-period { color: rgba(255,255,255,0.4); }
+
+  .plan-desc { font-size: 14px; color: #6b6057; margin-bottom: 28px; line-height: 1.6; }
+  .price-card.popular .plan-desc { color: rgba(255,255,255,0.55); }
+
+  .plan-features { list-style: none; margin-bottom: 32px; display: flex; flex-direction: column; gap: 10px; }
+
+  .plan-features li {
+    font-size: 14px;
+    color: #4a4540;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .price-card.popular .plan-features li { color: rgba(255,255,255,0.75); }
+
+  .plan-features li::before {
+    content: '✓';
+    width: 20px; height: 20px;
+    background: #dcfce7;
+    color: #16a34a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .price-card.popular .plan-features li::before {
+    background: rgba(244,80,10,0.2);
+    color: #ff8c5a;
+  }
+
+  .btn-plan {
+    display: block;
+    text-align: center;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-plan-outline {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--ink);
+  }
+
+  .btn-plan-outline:hover {
+    border-color: var(--ink);
+    background: rgba(13,13,13,0.04);
+  }
+
+  .btn-plan-primary {
+    background: var(--orange);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(244,80,10,0.35);
+  }
+
+  .btn-plan-primary:hover { background: var(--orange-light); }
+
+  /* ─── TESTIMONIALS ─── */
+  .testimonials-section { background: var(--sand); padding: 100px 48px; border-top: 1px solid var(--border); }
+  .testimonials-inner { max-width: 1280px; margin: 0 auto; }
+
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 60px;
+  }
+
+  .testi-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    transition: box-shadow 0.2s;
+  }
+
+  .testi-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.07); }
+
+  .testi-stars { color: var(--orange); font-size: 14px; margin-bottom: 16px; letter-spacing: 2px; }
+  .testi-text { font-size: 15px; color: #3a3530; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+
+  .testi-author { display: flex; align-items: center; gap: 12px; }
+  .testi-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .testi-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .testi-role { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ─── STATS BAR ─── */
+  .stats-bar {
+    background: var(--orange);
+    padding: 56px 48px;
+  }
+
+  .stats-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+    text-align: center;
+  }
+
+  .stat-item-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -2px;
+    margin-bottom: 4px;
+  }
+
+  .stat-item-label { font-size: 14px; color: rgba(255,255,255,0.7); font-weight: 500; }
+
+  /* ─── CTA ─── */
+  .cta-section {
+    padding: 120px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(244,80,10,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-inner { max-width: 700px; margin: 0 auto; position: relative; z-index: 1; }
+
+  .cta-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 4vw, 56px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    color: var(--ink);
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .cta-sub { font-size: 17px; color: #5a544c; line-height: 1.7; margin-bottom: 40px; }
+
+  .cta-form {
+    display: flex;
+    gap: 12px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .cta-input {
+    flex: 1;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .cta-input:focus { border-color: var(--orange); }
+  .cta-input::placeholder { color: var(--muted); }
+
+  .cta-note { font-size: 12px; color: var(--muted); margin-top: 14px; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--ink);
+    padding: 60px 48px 40px;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .footer-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .footer-top {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+    margin-bottom: 60px;
+  }
+
+  .footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: #fff; margin-bottom: 14px; }
+  .footer-tagline { font-size: 14px; line-height: 1.7; max-width: 280px; }
+
+  .footer-col-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.9); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 20px; }
+
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .footer-links a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .footer-links a:hover { color: rgba(255,255,255,0.9); }
+
+  .footer-bottom {
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── MOBILE NAV ─── */
+  .hamburger { display: none; flex-direction: column; gap: 4px; cursor: pointer; padding: 4px; }
+  .hamburger span { width: 22px; height: 2px; background: var(--ink); border-radius: 2px; transition: all 0.3s; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 1024px) {
+    .hero { grid-template-columns: 1fr; padding: 120px 32px 60px; }
+    .hero-visual { display: none; }
+    .pain-grid { grid-template-columns: repeat(2, 1fr); }
+    .features-grid { grid-template-columns: 1fr; }
+    .feature-card.large { grid-column: span 1; grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .price-card.popular { transform: none; }
+    .testimonials-grid { grid-template-columns: 1fr; }
+    .stats-inner { grid-template-columns: repeat(2, 1fr); }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+    .ai-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .section { padding: 72px 24px; }
+    .hero { padding: 100px 24px 60px; }
+    .pain-section { padding: 72px 24px; }
+    .pain-grid { grid-template-columns: 1fr; }
+    .logos-strip { padding: 20px 24px; }
+    .logos-row { gap: 24px; }
+    .cta-form { flex-direction: column; }
+    .footer-top { grid-template-columns: 1fr; gap: 32px; }
+    .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+    .stats-inner { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    .stats-bar { padding: 40px 24px; }
+    .ai-section { padding: 72px 24px; }
+    .testimonials-section { padding: 72px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="logo">Build<span class="logo-dot">Ops</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#ai">AI Tools</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#testimonials">Testimonials</a></li>
+    <li><a href="#cta" class="nav-cta">Start Free Trial</a></li>
+  </ul>
+  <div class="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-content">
+    <div class="hero-badge">🚀 Now Available in Nigeria & Africa</div>
+    <h1>Your Construction<br />Business<br /><em>Command Center</em></h1>
+    <p class="hero-sub">The all-in-one mobile platform that replaces WhatsApp chaos, Excel spreadsheets, and paper forms. Built for contractors with 5–50 workers who want to run like a $10M company.</p>
+    <div class="hero-actions">
+      <a href="#cta" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Start Free 14-Day Trial
+      </a>
+      <a href="#features" class="btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        See How It Works
+      </a>
+    </div>
+    <div class="hero-trust">
+      <div class="trust-avatars">
+        <span>AK</span><span>OB</span><span>EM</span><span>TF</span>
+      </div>
+      <span><strong style="color:var(--ink)">500+ contractors</strong> already saving 12+ hours/week</span>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="floating-card float-1">
+      <div class="float-label">Monthly Revenue</div>
+      <div class="float-value float-green">₦4.2M</div>
+      <div class="float-tag">↑ 23% vs last month</div>
+    </div>
+
+    <div class="dashboard-card">
+      <div class="db-header">
+        <div class="db-title">BuildOps Dashboard</div>
+        <div class="db-dots"><span></span><span></span><span></span></div>
+      </div>
+
+      <div class="db-stats">
+        <div class="stat-box">
+          <div class="stat-num">12<span>+</span></div>
+          <div class="stat-label">Active Projects</div>
         </div>
-        <div className="modal-body">
-          <div className="form-group">
-            <label className="form-label">Project Name</label>
-            <input className="form-input" placeholder="e.g. Lekki Phase 3 Residential" />
+        <div class="stat-box">
+          <div class="stat-num">94<span>%</span></div>
+          <div class="stat-label">On Schedule</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">₦<span>2.8M</span></div>
+          <div class="stat-label">Invoiced This Mo</div>
+        </div>
+      </div>
+
+      <div class="db-projects">
+        <div class="proj-row">
+          <div class="proj-icon" style="background:#1a2a1a">🏗️</div>
+          <div class="proj-info">
+            <div class="proj-name">Lekki Phase 2 Residential</div>
+            <div class="proj-sub">Lagos · 24 workers on-site</div>
           </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Client</label>
-              <input className="form-input" placeholder="Client name" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Project Type</label>
-              <select className="form-input">
-                <option>Residential</option><option>Commercial</option>
-                <option>Infrastructure</option><option>Industrial</option><option>Renovation</option>
-              </select>
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Budget (₦)</label>
-              <input className="form-input" placeholder="0.00" type="number" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Target End Date</label>
-              <input className="form-input" type="date" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Location / Site Address</label>
-            <input className="form-input" placeholder="Site address or coordinates" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Project Manager</label>
-            <select className="form-input">
-              <option>Emeka Okafor</option><option>Ngozi Adeyemi</option><option>Bello Usman</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea className="form-input" rows={3} style={{resize:"vertical"}} placeholder="Brief project scope..."/>
+          <div class="proj-progress">
+            <div class="prog-bar"><div class="prog-fill" style="width:72%"></div></div>
+            <div class="prog-pct">72%</div>
           </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onClose}>Create Project →</button>
+        <div class="proj-row">
+          <div class="proj-icon" style="background:#1a1a2a">⚡</div>
+          <div class="proj-info">
+            <div class="proj-name">EKEDC Substation Upgrade</div>
+            <div class="proj-sub">Abuja · Electrical · 8 workers</div>
+          </div>
+          <div class="proj-progress">
+            <div class="prog-bar"><div class="prog-fill" style="width:45%"></div></div>
+            <div class="prog-pct">45%</div>
+          </div>
         </div>
+        <div class="proj-row">
+          <div class="proj-icon" style="background:#2a1a1a">🔧</div>
+          <div class="proj-info">
+            <div class="proj-name">Port Harcourt HVAC Reno</div>
+            <div class="proj-sub">PH · HVAC · Invoice due in 3 days</div>
+          </div>
+          <div class="proj-progress">
+            <div class="prog-bar"><div class="prog-fill" style="width:88%; background:#22c55e"></div></div>
+            <div class="prog-pct" style="color:#22c55e">88%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-text"><strong>AI Alert:</strong> Concrete delivery for Block C delayed 2 days. Auto-rescheduled 3 dependent tasks.</div>
       </div>
     </div>
-  );
-}
 
-function NewInvoiceModal({ onClose }) {
-  return (
-    <div className="modal-overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
-        <div className="modal-header">
-          <div className="modal-title">Create Invoice</div>
-          <button className="btn btn-ghost btn-sm btn-icon" onClick={onClose}>✕</button>
-        </div>
-        <div className="modal-body">
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Invoice #</label>
-              <input className="form-input" defaultValue="INV-0046" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Issue Date</label>
-              <input className="form-input" type="date" defaultValue="2026-05-05" />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Client</label>
-              <select className="form-input">
-                <option>Zenith Properties</option><option>First Bank HQ</option>
-                <option>FCT Infrastructure</option><option>Dangote Logistics</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Project</label>
-              <select className="form-input">
-                {PROJECTS.map(p=><option key={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Amount (₦)</label>
-              <input className="form-input" placeholder="0.00" type="number" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Due Date</label>
-              <input className="form-input" type="date" />
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Description / Milestone</label>
-            <textarea className="form-input" rows={2} style={{resize:"vertical"}} placeholder="e.g. Progress billing — 30% completion, structural frame"/>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Payment Terms</label>
-            <select className="form-input">
-              <option>Net 14</option><option>Net 30</option><option>Due on Receipt</option>
-            </select>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={onClose}>Generate Invoice →</button>
-        </div>
+    <div class="floating-card float-2">
+      <div class="float-label">Invoices Paid</div>
+      <div class="float-value">₦1.9M</div>
+      <div class="float-tag">3 pending · Auto-reminder sent</div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGOS -->
+<div class="logos-strip">
+  <p>Trusted by contractors across Nigeria, Ghana, Kenya & South Africa</p>
+  <div class="logos-row">
+    <span class="logo-item">BuildRight NG</span>
+    <span class="logo-item">Apex Structures</span>
+    <span class="logo-item">SwiftElectrical</span>
+    <span class="logo-item">ProPlumb Africa</span>
+    <span class="logo-item">NovaBuild Ltd</span>
+    <span class="logo-item">CoreCivil GH</span>
+  </div>
+</div>
+
+<!-- PAIN POINTS -->
+<div class="pain-section">
+  <div class="pain-inner">
+    <p class="section-tag reveal">The Real Problem</p>
+    <h2 class="section-title reveal" style="color:#fff">Running a construction firm<br />shouldn't require <em style="color:var(--orange)">heroics</em>.</h2>
+    <p class="section-sub reveal">Every day you're firefighting. Here's the chaos BuildOps eliminates.</p>
+
+    <div class="pain-grid">
+      <div class="pain-item reveal">
+        <span class="pain-emoji">💸</span>
+        <div class="pain-title">Cash Flow Nightmares</div>
+        <div class="pain-desc">Delayed client payments, missed invoicing windows, and inaccurate job costing drain your margins before you even see a profit.</div>
+      </div>
+      <div class="pain-item reveal">
+        <span class="pain-emoji">📱</span>
+        <div class="pain-title">WhatsApp Is Not an ERP</div>
+        <div class="pain-desc">Critical updates buried in 47-person group chats. Change orders lost in voice notes. Approvals delayed because someone's phone died.</div>
+      </div>
+      <div class="pain-item reveal">
+        <span class="pain-emoji">📋</span>
+        <div class="pain-title">Paper Admin Overload</div>
+        <div class="pain-desc">Daily reports, timesheets, and site logs done on paper—then re-entered into Excel—then emailed as PDF. 3 hours of work for zero insight.</div>
+      </div>
+      <div class="pain-item reveal">
+        <span class="pain-emoji">📦</span>
+        <div class="pain-title">Material & Cost Overruns</div>
+        <div class="pain-desc">You find out a project went 30% over budget when it's too late to fix it. No real-time tracking, no early warnings.</div>
+      </div>
+      <div class="pain-item reveal">
+        <span class="pain-emoji">🔀</span>
+        <div class="pain-title">Communication Breakdowns</div>
+        <div class="pain-desc">Your site foreman, subcontractors, and client are all working from different versions of the same document. Disputes follow.</div>
+      </div>
+      <div class="pain-item reveal">
+        <span class="pain-emoji">📉</span>
+        <div class="pain-title">Bids You Can't Win (or Can't Afford to Win)</div>
+        <div class="pain-desc">Guessing on estimates means losing bids to competitors—or winning jobs that destroy your margins. Both outcomes kill your business.</div>
       </div>
     </div>
-  );
-}
+  </div>
+</div>
 
-// ─── PAGES ───────────────────────────────────────────────────────────────────
+<!-- FEATURES -->
+<section class="section" id="features">
+  <p class="section-tag reveal">Core Modules</p>
+  <h2 class="section-title reveal">Everything your crew needs,<br />nothing they don't.</h2>
+  <p class="section-sub reveal">Six tightly integrated modules that cover every part of running a construction business — from site to invoice.</p>
 
-function DashboardPage({ onNewProject, onNewInvoice }) {
-  const maxCash = Math.max(...CASHFLOW.map(d=>Math.max(d.income,d.expense)));
-  return (
-    <div className="page-enter">
-      {/* AI Panel */}
-      <div className="ai-panel">
-        <div className="ai-header">
-          <span className="ai-badge">AI</span>
-          <span className="ai-title">Smart Alerts — Today, May 5</span>
-        </div>
-        <div className="ai-alerts">
-          <div className="ai-alert">
-            <span className="ai-alert-icon">⚠️</span>
-            <div>
-              <strong style={{color:COLORS.red}}>Delay Risk:</strong> Abuja Road Expansion is tracking 11 days behind schedule on Km 14–16 due to material delivery delay. Suggest accelerating rebar procurement.
-            </div>
-          </div>
-          <div className="ai-alert">
-            <span className="ai-alert-icon">💸</span>
-            <div>
-              <strong style={{color:COLORS.accent}}>Overdue Payment:</strong> INV-0043 (₦15M — FCT Infrastructure) is 20 days overdue. Auto-reminder sent. Consider escalation.
-            </div>
-          </div>
-          <div className="ai-alert">
-            <span className="ai-alert-icon">✅</span>
-            <div>
-              <strong style={{color:COLORS.green}}>Cash Flow Positive:</strong> May projected net: +₦12.9M across all active projects. Lekki Phase 2 on track for on-time delivery.
-            </div>
-          </div>
+  <div class="features-grid">
+    <div class="feature-card large reveal">
+      <div>
+        <div class="feat-icon">📊</div>
+        <div class="feat-title">Project Dashboard & Scheduling</div>
+        <div class="feat-desc">Create projects, assign tasks, track progress with visual Gantt charts, and get real-time visibility across every active job site. Know exactly where each project stands — before problems become crises.</div>
+        <div class="feat-tags">
+          <span class="feat-tag">Gantt Charts</span>
+          <span class="feat-tag">Task Assignment</span>
+          <span class="feat-tag">Progress Tracking</span>
+          <span class="feat-tag">Milestone Alerts</span>
+          <span class="feat-tag ai">AI Risk Flagging</span>
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <div className="quick-actions">
-        {[
-          { icon:"🏗", label:"New Project", action: onNewProject },
-          { icon:"📋", label:"Field Report", action:()=>{} },
-          { icon:"🧾", label:"New Invoice", action: onNewInvoice },
-          { icon:"📄", label:"Upload Doc", action:()=>{} },
-        ].map((qa,i)=>(
-          <div key={i} className="quick-action" onClick={qa.action}>
-            <div className="qa-icon">{qa.icon}</div>
-            <div className="qa-label">{qa.label}</div>
+      <div class="feat-visual">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;">Lekki Phase 2 — Week 14/24</div>
+        <div>
+          <div class="gantt-row">
+            <div class="gantt-label">Foundation</div>
+            <div class="gantt-bar-wrap"><div class="gantt-bar" style="width:100%;background:#22c55e"></div></div>
           </div>
-        ))}
-      </div>
-
-      {/* Stats */}
-      <div className="stat-grid">
-        {[
-          { label:"Active Projects", value:"5", delta:"+2 this month", up:true, icon:"🏗", cls:"yellow" },
-          { label:"Total Revenue (YTD)", value:"₦89.4M", delta:"+23% vs last year", up:true, icon:"💰", cls:"green" },
-          { label:"Outstanding Invoices", value:"₦27.75M", delta:"3 invoices pending", up:false, icon:"⏳", cls:"red" },
-          { label:"Avg Project Health", value:"74%", delta:"1 at-risk project", up:false, icon:"📊", cls:"blue" },
-        ].map((s,i)=>(
-          <div key={i} className={`stat-card ${s.cls}`}>
-            <div className="stat-icon">{s.icon}</div>
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value">{s.value}</div>
-            <div className={`stat-delta ${s.up?"delta-up":"delta-down"}`}>
-              {s.up?"↑":"↓"} {s.delta}
-            </div>
+          <div class="gantt-row">
+            <div class="gantt-label">Framing</div>
+            <div class="gantt-bar-wrap"><div class="gantt-bar" style="width:80%;background:#22c55e"></div></div>
           </div>
-        ))}
-      </div>
-
-      {/* Projects + Activity */}
-      <div className="grid-3">
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Active Projects</div>
-              <div className="card-sub">Real-time progress tracking</div>
-            </div>
-            <button className="btn btn-ghost btn-sm" onClick={onNewProject}>+ New</button>
+          <div class="gantt-row">
+            <div class="gantt-label">Electrical</div>
+            <div class="gantt-bar-wrap"><div class="gantt-bar" style="width:55%;background:var(--orange)"></div></div>
           </div>
-          {PROJECTS.slice(0,4).map(p=>(
-            <div key={p.id} className="project-item">
-              <div className="project-color" style={{background:p.color}}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div className="project-name">{p.name}</div>
-                <div className="project-meta">{p.client} · {p.type}</div>
-                <div style={{marginTop:8,display:"flex",alignItems:"center",gap:10}}>
-                  <div className="progress-wrap" style={{flex:1}}>
-                    <div className="progress-fill" style={{width:`${p.progress}%`,background:p.color}}/>
-                  </div>
-                  <span style={{fontSize:11,color:COLORS.textMuted,flexShrink:0}}>{p.progress}%</span>
-                </div>
-              </div>
-              <div className="project-right">
-                <div className="project-budget">{fmt(p.spent)}</div>
-                <div className="project-date">of {fmt(p.budget)}</div>
-                <div style={{marginTop:4}}>
-                  <span className={`badge ${p.status==="completed"?"badge-green":p.status==="at-risk"?"badge-red":"badge-yellow"}`}>
-                    {p.status==="at-risk"?"⚠ At Risk":p.status==="completed"?"✓ Done":"● Active"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{display:"flex",flexDirection:"column",gap:20}}>
-          {/* Activity Feed */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Recent Activity</div>
-            </div>
-            <div className="card-body" style={{paddingTop:8,paddingBottom:8}}>
-              {ACTIVITY.map((a,i)=>(
-                <div key={i} className="activity-item">
-                  <div className="activity-dot" style={{background:a.color}}/>
-                  <div>
-                    <div className="activity-text">{a.text}</div>
-                    <div className="activity-time">{a.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div class="gantt-row">
+            <div class="gantt-label">Plumbing</div>
+            <div class="gantt-bar-wrap"><div class="gantt-bar" style="width:40%;background:var(--orange)"></div></div>
+          </div>
+          <div class="gantt-row">
+            <div class="gantt-label">Finishing</div>
+            <div class="gantt-bar-wrap"><div class="gantt-bar" style="width:10%;background:rgba(255,255,255,0.15)"></div></div>
           </div>
         </div>
-      </div>
-
-      {/* Cash Flow + Tasks */}
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Cash Flow</div>
-              <div className="card-sub">Income vs Expenses (₦M, last 7 months)</div>
-            </div>
-            <div style={{display:"flex",gap:12,alignItems:"center",fontSize:11,color:COLORS.textMuted}}>
-              <span>▰ Income</span><span style={{color:COLORS.redDim}}>▰ Expense</span>
-            </div>
-          </div>
-          <div className="card-body">
-            <div className="chart-bars">
-              {CASHFLOW.map((d,i)=>(
-                <div key={i} className="chart-bar-wrap">
-                  <div style={{flex:1,display:"flex",alignItems:"flex-end",gap:3,width:"100%"}}>
-                    <div className="chart-bar" style={{background:COLORS.accent,height:`${(d.income/maxCash)*100}%`,flex:1,opacity:0.85}}/>
-                    <div className="chart-bar" style={{background:COLORS.red,height:`${(d.expense/maxCash)*100}%`,flex:1,opacity:0.6}}/>
-                  </div>
-                  <div className="chart-label">{d.month}</div>
-                </div>
-              ))}
-            </div>
-            <div className="divider"/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-              {[
-                {label:"May Income", val:"₦34.2M", color:COLORS.green},
-                {label:"May Expenses", val:"₦21.3M", color:COLORS.red},
-                {label:"Net Margin", val:"+₦12.9M", color:COLORS.accent},
-              ].map((m,i)=>(
-                <div key={i} style={{textAlign:"center"}}>
-                  <div style={{fontSize:15,fontFamily:"Syne",fontWeight:700,color:m.color}}>{m.val}</div>
-                  <div style={{fontSize:10,color:COLORS.textMuted,marginTop:2}}>{m.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Priority Tasks</div>
-            <button className="btn btn-ghost btn-sm">View All</button>
-          </div>
-          <div className="card-body" style={{paddingTop:4,paddingBottom:4}}>
-            {TASKS.map(t=>(
-              <div key={t.id} className="task-item">
-                <div className={`task-checkbox ${t.done?"checked":""}`}>
-                  {t.done && <span style={{color:"#000",fontSize:9,fontWeight:900}}>✓</span>}
-                </div>
-                <div style={{flex:1}}>
-                  <div className={`task-name ${t.done?"done":""}`}>{t.name}</div>
-                  <div className="task-meta">{t.project} · Due {t.due}</div>
-                </div>
-                <span className={`task-priority priority-${t.priority}`}>{t.priority.toUpperCase()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div style="font-size:11px;color:rgba(255,165,100,0.8);margin-top:12px;background:rgba(244,80,10,0.12);padding:10px 12px;border-radius:8px;border:1px solid rgba(244,80,10,0.2);">⚠️ Electrical phase 3 days behind. Finishing at risk.</div>
       </div>
     </div>
-  );
-}
 
-function ProjectsPage({ onNewProject }) {
-  const [activeTab, setActiveTab] = useState("all");
-  const filtered = activeTab==="all" ? PROJECTS : PROJECTS.filter(p=>p.status===activeTab);
-  return (
-    <div className="page-enter">
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div className="tabs" style={{flex:1,marginRight:16,marginBottom:0}}>
-          {["all","active","at-risk","completed"].map(t=>(
-            <div key={t} className={`tab ${activeTab===t?"active":""}`} onClick={()=>setActiveTab(t)}>
-              {t.charAt(0).toUpperCase()+t.slice(1)}
-              {t==="at-risk"&&<span style={{marginLeft:4,color:COLORS.red}}>●</span>}
-            </div>
-          ))}
-        </div>
-        <button className="btn btn-primary" onClick={onNewProject}>+ New Project</button>
+    <div class="feature-card reveal">
+      <div class="feat-icon">📱</div>
+      <div class="feat-title">Mobile Field App</div>
+      <div class="feat-desc">Your site workers submit daily logs, upload timestamped & geotagged photos, clock in/out, and sync data automatically — even offline in areas with poor signal.</div>
+      <div class="feat-tags">
+        <span class="feat-tag">Offline Mode</span>
+        <span class="feat-tag">Geotagged Photos</span>
+        <span class="feat-tag">Time Tracking</span>
+        <span class="feat-tag ai">Voice-to-Report AI</span>
       </div>
+    </div>
 
-      <div style={{display:"flex",flexDirection:"column",gap:14}}>
-        {filtered.map(p=>(
-          <div key={p.id} className="card" style={{transition:"all 0.2s",cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(245,166,35,0.3)"} onMouseLeave={e=>e.currentTarget.style.borderColor=COLORS.border}>
-            <div className="card-body">
-              <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
-                <div style={{width:5,borderRadius:3,background:p.color,alignSelf:"stretch",flexShrink:0}}/>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                    <div>
-                      <div style={{fontFamily:"Syne",fontWeight:700,fontSize:15,color:COLORS.text,marginBottom:3}}>{p.name}</div>
-                      <div style={{fontSize:12,color:COLORS.textMuted}}>{p.client} · {p.type} · Due {p.dueDate}</div>
-                    </div>
-                    <span className={`badge ${p.status==="completed"?"badge-green":p.status==="at-risk"?"badge-red":"badge-yellow"}`}>
-                      {p.status==="at-risk"?"⚠ At Risk":p.status==="completed"?"✓ Completed":"● Active"}
-                    </span>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 120px",gap:16,alignItems:"center"}}>
-                    <div>
-                      <div style={{fontSize:11,color:COLORS.textMuted,marginBottom:4}}>BUDGET</div>
-                      <div style={{fontFamily:"Syne",fontWeight:700,fontSize:16,color:COLORS.text}}>{fmt(p.budget)}</div>
-                    </div>
-                    <div>
-                      <div style={{fontSize:11,color:COLORS.textMuted,marginBottom:4}}>SPENT</div>
-                      <div style={{fontFamily:"Syne",fontWeight:700,fontSize:16,color:p.spent/p.budget>0.9?COLORS.red:COLORS.text}}>{fmt(p.spent)}</div>
-                    </div>
-                    <div>
-                      <div style={{fontSize:11,color:COLORS.textMuted,marginBottom:4}}>REMAINING</div>
-                      <div style={{fontFamily:"Syne",fontWeight:700,fontSize:16,color:COLORS.green}}>{fmt(p.budget-p.spent)}</div>
-                    </div>
-                    <div>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                        <span style={{fontSize:11,color:COLORS.textMuted}}>PROGRESS</span>
-                        <span style={{fontSize:11,fontWeight:700,color:p.color}}>{p.progress}%</span>
-                      </div>
-                      <div className="progress-wrap">
-                        <div className="progress-fill" style={{width:`${p.progress}%`,background:p.color}}/>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
+    <div class="feature-card reveal">
+      <div class="feat-icon">💰</div>
+      <div class="feat-title">Financials & Invoicing</div>
+      <div class="feat-desc">Real-time job costing, automated invoice generation, change order management, and payment reminders that actually get sent. Stop leaving money on the table.</div>
+      <div class="feat-tags">
+        <span class="feat-tag">Job Costing</span>
+        <span class="feat-tag">Auto Invoicing</span>
+        <span class="feat-tag">Change Orders</span>
+        <span class="feat-tag ai">Smart Templates</span>
       </div>
+    </div>
 
-      {/* Gantt */}
-      <div className="card" style={{marginTop:24}}>
-        <div className="card-header">
+    <div class="feature-card reveal">
+      <div class="feat-icon">📁</div>
+      <div class="feat-title">Document Management</div>
+      <div class="feat-desc">Centralized storage for contracts, drawings, RFIs, and approvals — all with version control. No more "I have the old version" on site.</div>
+      <div class="feat-tags">
+        <span class="feat-tag">Version Control</span>
+        <span class="feat-tag">Contract Storage</span>
+        <span class="feat-tag">RFI Tracking</span>
+        <span class="feat-tag">Digital Approvals</span>
+      </div>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feat-icon">👥</div>
+      <div class="feat-title">Team & Subcontractor Hub</div>
+      <div class="feat-desc">Role-based permissions, a dedicated subcontractor portal, and in-app messaging that keeps everyone on the same page — without the WhatsApp group chaos.</div>
+      <div class="feat-tags">
+        <span class="feat-tag">User Roles</span>
+        <span class="feat-tag">Sub Portal</span>
+        <span class="feat-tag">Notifications</span>
+        <span class="feat-tag">Client Access</span>
+      </div>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feat-icon">📈</div>
+      <div class="feat-title">Reporting & Analytics</div>
+      <div class="feat-desc">Know your real profitability per project. Spot which job types make you money and which drain you dry. Make decisions based on data, not gut feel.</div>
+      <div class="feat-tags">
+        <span class="feat-tag">Profitability Reports</span>
+        <span class="feat-tag">Custom Dashboards</span>
+        <span class="feat-tag">Cost Variance</span>
+        <span class="feat-tag ai">AI Insights</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI SECTION -->
+<div class="ai-section" id="ai">
+  <div class="ai-inner">
+    <p class="section-tag reveal">AI-Powered</p>
+    <h2 class="section-title reveal">Your smartest site manager<br />works <em style="color:var(--orange)">24/7 for free.</em></h2>
+    <p class="section-sub reveal">Three AI features that save hours every week and catch problems before they cost you money.</p>
+
+    <div class="ai-grid">
+      <div class="ai-features">
+        <div class="ai-item reveal">
+          <div class="ai-icon">🎙️</div>
           <div>
-            <div className="card-title">Schedule — VI Office Complex</div>
-            <div className="card-sub">Gantt overview · Jan 2026 → Mar 2027</div>
+            <div class="ai-item-title">Voice-to-Daily Report <span class="ai-badge">AI</span></div>
+            <div class="ai-item-desc">Your foreman speaks a 60-second voice note on site. BuildOps AI transcribes it, structures it into a professional daily report, and sends it to the client automatically. Done.</div>
           </div>
-          <button className="btn btn-ghost btn-sm">Full Schedule</button>
         </div>
-        <div className="card-body">
-          {GANTT.map((g,i)=>(
-            <div key={i} className="gantt-row">
-              <div className="gantt-label">{g.label}</div>
-              <div className="gantt-track">
-                <div className="gantt-bar" style={{left:`${g.start}%`,width:`${g.width}%`,background:g.color,opacity:0.8}}/>
-              </div>
-              <div className="gantt-pct">{g.pct}</div>
-            </div>
-          ))}
+        <div class="ai-item reveal">
+          <div class="ai-icon">🚨</div>
+          <div>
+            <div class="ai-item-title">Risk & Delay Flagging <span class="ai-badge">AI</span></div>
+            <div class="ai-item-desc">The system learns your project patterns and flags tasks at risk of delay before they slip — based on weather forecasts, historical data, and current progress velocity.</div>
+          </div>
         </div>
+        <div class="ai-item reveal">
+          <div class="ai-icon">📝</div>
+          <div>
+            <div class="ai-item-title">Smart Estimate Templates <span class="ai-badge">AI</span></div>
+            <div class="ai-item-desc">Describe the job scope in plain English. BuildOps generates a detailed, itemized estimate with current material prices — saving 3–4 hours of manual bidding per proposal.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-mockup reveal">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);font-weight:600;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;display:flex;align-items:center;gap:6px;">
+          <div style="width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 1.5s infinite"></div>
+          AI Assistant — Active
+        </div>
+
+        <div class="chat-bubble chat-user">Generate daily report from this morning's voice note from Emeka on the Abuja site</div>
+        <div class="chat-bubble chat-ai"><strong>Daily Site Report — Abuja Substation</strong><br/>Date: May 5, 2026 · Site Foreman: Emeka O.<br/><br/>Activities completed: Transformer mounting (units 3 & 4), conduit installation Block B levels 1–3.<br/><br/>Workers on site: 14/16 scheduled. <strong>2 absent — logged.</strong><br/><br/>Issues: Cement delivery delayed to 3PM. Afternoon schedule auto-adjusted.<br/><br/>Weather: Clear. No safety incidents.</div>
+        <div class="typing"><span></span><span></span><span></span></div>
+
+        <div style="margin-top:16px;font-size:11px;color:rgba(255,255,255,0.3);">Client auto-notified · PDF generated · Logged to project</div>
       </div>
     </div>
-  );
-}
+  </div>
+</div>
 
-function FinancialsPage({ onNewInvoice }) {
-  const totalOutstanding = INVOICES.filter(i=>i.status!=="paid").reduce((s,i)=>s+i.amount,0);
-  const totalPaid = INVOICES.filter(i=>i.status==="paid").reduce((s,i)=>s+i.amount,0);
-  const overdue = INVOICES.filter(i=>i.status==="overdue").reduce((s,i)=>s+i.amount,0);
-
-  return (
-    <div className="page-enter">
-      <div className="stat-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
-        {[
-          {label:"Total Paid (May)", value:fmt(totalPaid), icon:"✓", color:COLORS.green, cls:"green"},
-          {label:"Outstanding", value:fmt(totalOutstanding), icon:"⏳", color:COLORS.accent, cls:"yellow"},
-          {label:"Overdue", value:fmt(overdue), icon:"⚠", color:COLORS.red, cls:"red"},
-        ].map((s,i)=>(
-          <div key={i} className={`stat-card ${s.cls}`}>
-            <div className="stat-icon" style={{color:s.color}}>{s.icon}</div>
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{color:s.color}}>{s.value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">Invoices</div>
-          <button className="btn btn-primary btn-sm" onClick={onNewInvoice}>+ New Invoice</button>
-        </div>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Invoice</th><th>Client</th><th>Project</th>
-              <th>Date</th><th>Amount</th><th>Status</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {INVOICES.map(inv=>(
-              <tr key={inv.id}>
-                <td style={{fontFamily:"Syne",fontWeight:600,color:COLORS.text}}>{inv.id}</td>
-                <td style={{color:COLORS.textSub}}>{inv.client}</td>
-                <td style={{color:COLORS.textMuted,fontSize:12}}>{inv.project}</td>
-                <td style={{color:COLORS.textMuted,fontSize:12}}>{inv.date}</td>
-                <td className="table-amount" style={{color:COLORS.text}}>{fmt(inv.amount)}</td>
-                <td>
-                  <span className={`badge ${inv.status==="paid"?"badge-green":inv.status==="overdue"?"badge-red":"badge-yellow"}`}>
-                    {inv.status.charAt(0).toUpperCase()+inv.status.slice(1)}
-                  </span>
-                </td>
-                <td>
-                  <div style={{display:"flex",gap:6}}>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:11}}>View</button>
-                    {inv.status!=="paid" && <button className="btn btn-ghost btn-sm" style={{fontSize:11,color:COLORS.accent}}>Remind</button>}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Job Costing */}
-      <div className="card" style={{marginTop:24}}>
-        <div className="card-header">
-          <div className="card-title">Job Costing Overview</div>
-          <div className="card-sub" style={{fontSize:12,color:COLORS.textMuted,marginTop:2}}>Budget vs. Actual spend per project</div>
-        </div>
-        <div className="card-body">
-          {PROJECTS.map(p=>{
-            const over = p.spent/p.budget;
-            return (
-              <div key={p.id} style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${COLORS.border}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:7,alignItems:"center"}}>
-                  <div>
-                    <span style={{fontSize:13,fontWeight:500,color:COLORS.text}}>{p.name}</span>
-                    <span style={{fontSize:11,color:COLORS.textMuted,marginLeft:8}}>{p.client}</span>
-                  </div>
-                  <div style={{fontSize:12,color:over>0.9?COLORS.red:over>0.7?COLORS.accent:COLORS.green,fontWeight:600}}>
-                    {Math.round(over*100)}% of budget used
-                  </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div className="progress-wrap" style={{flex:1}}>
-                    <div className="progress-fill" style={{width:`${Math.min(over*100,100)}%`,background:over>0.9?COLORS.red:over>0.7?COLORS.accent:COLORS.green}}/>
-                  </div>
-                  <div style={{fontSize:11,color:COLORS.textMuted,width:120,textAlign:"right"}}>
-                    {fmt(p.spent)} / {fmt(p.budget)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="reveal">
+      <div class="stat-item-num">12hrs</div>
+      <div class="stat-item-label">Average time saved per week per contractor</div>
     </div>
-  );
-}
+    <div class="reveal">
+      <div class="stat-item-num">34%</div>
+      <div class="stat-item-label">Reduction in cost overruns after 90 days</div>
+    </div>
+    <div class="reveal">
+      <div class="stat-item-num">2.3×</div>
+      <div class="stat-item-label">Faster invoice-to-payment cycle</div>
+    </div>
+    <div class="reveal">
+      <div class="stat-item-num">500+</div>
+      <div class="stat-item-label">Contractors across West Africa trust BuildOps</div>
+    </div>
+  </div>
+</div>
 
-function TeamPage() {
-  return (
-    <div className="page-enter">
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:22}}>
-        <div/>
-        <button className="btn btn-primary">+ Add Team Member</button>
-      </div>
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header"><div className="card-title">Team Members (5)</div></div>
-          <div className="card-body" style={{paddingTop:4,paddingBottom:4}}>
-            {TEAM.map((m,i)=>(
-              <div key={i} className="team-member">
-                <div className="member-avatar" style={{background:m.color+"22",color:m.color}}>{m.initials}</div>
-                <div>
-                  <div className="member-name">{m.name}</div>
-                  <div className="member-role">{m.role}</div>
-                </div>
-                <div className="member-status">
-                  <span className={`badge ${m.status==="on-site"?"badge-green":m.status==="office"?"badge-blue":"badge-purple"}`}>
-                    {m.status==="on-site"?"On Site":m.status==="office"?"In Office":"Remote"}
-                  </span>
-                </div>
-              </div>
-            ))}
+<!-- TESTIMONIALS -->
+<div class="testimonials-section" id="testimonials">
+  <div class="testimonials-inner">
+    <p class="section-tag reveal">Real Contractors. Real Results.</p>
+    <h2 class="section-title reveal">Don't take our word for it.</h2>
+
+    <div class="testimonials-grid">
+      <div class="testi-card reveal">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"Before BuildOps we were chasing 4 different WhatsApp groups to know what was happening on site. Now I open one screen and I know everything. My clients are shocked we can produce daily reports so fast."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#c0392b">AK</div>
+          <div>
+            <div class="testi-name">Adewale Kolawole</div>
+            <div class="testi-role">MD, Apex Construction Ltd · Lagos</div>
           </div>
         </div>
-
-        <div style={{display:"flex",flexDirection:"column",gap:20}}>
-          <div className="card">
-            <div className="card-header"><div className="card-title">Project Assignments</div></div>
-            <div className="card-body">
-              {PROJECTS.slice(0,3).map(p=>(
-                <div key={p.id} style={{marginBottom:14}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                    <span style={{fontSize:13,fontWeight:500,color:COLORS.text}}>{p.name.split(" ").slice(0,3).join(" ")}…</span>
-                    <div style={{display:"flex",gap:-4}}>
-                      {TEAM.slice(0,3).map((m,i)=>(
-                        <div key={i} className="member-avatar" style={{width:24,height:24,fontSize:9,background:m.color+"33",color:m.color,marginLeft:i>0?-6:0,border:`1px solid ${COLORS.bg}`}}>{m.initials}</div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="progress-wrap">
-                    <div className="progress-fill" style={{width:`${p.progress}%`,background:p.color}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
+      </div>
+      <div class="testi-card reveal">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"We were losing money on every job and didn't know why. BuildOps showed us our actual job costs in real time. We immediately fixed two projects that were bleeding cash. ROI in the first week."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#2980b9">OB</div>
+          <div>
+            <div class="testi-name">Obiageli Bassey</div>
+            <div class="testi-role">Director, SwiftBuild Engineering · Port Harcourt</div>
           </div>
-
-          <div className="card">
-            <div className="card-header"><div className="card-title">Roles & Permissions</div></div>
-            <div className="card-body">
-              {["Admin","Project Manager","Field Supervisor","Sub-contractor","Client View"].map((r,i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:i<4?`1px solid ${COLORS.border}`:"none",fontSize:13,color:COLORS.textSub}}>
-                  <span>{r}</span>
-                  <span style={{fontSize:11,color:COLORS.textMuted}}>{[5,3,8,12,6][i]} users</span>
-                </div>
-              ))}
-            </div>
+        </div>
+      </div>
+      <div class="testi-card reveal">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-text">"The AI estimate tool is scary good. What used to take half a day now takes 20 minutes. We're bidding on more jobs and winning them because our quotes are more accurate and professional."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#16a34a">EM</div>
+          <div>
+            <div class="testi-name">Emmanuel Mensah</div>
+            <div class="testi-role">Owner, ProBuild GH · Accra, Ghana</div>
           </div>
         </div>
       </div>
     </div>
-  );
-}
+  </div>
+</div>
 
-function AIPage() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([
-    { role:"ai", text:"Hello! I'm your BuildIQ AI assistant. I have full context of all your projects, invoices, and team. Ask me anything — risk analysis, cash flow forecasts, report drafts, or procurement advice." }
-  ]);
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef(null);
+<!-- PRICING -->
+<section class="section" id="pricing">
+  <p class="section-tag reveal">Transparent Pricing</p>
+  <h2 class="section-title reveal">Less than Procore.<br />More than enough.</h2>
+  <p class="section-sub reveal">No setup fees. No per-project fees. Cancel anytime. 14-day free trial on all plans.</p>
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
-    setInput("");
-    setMessages(prev=>[...prev, {role:"user",text:userMsg}]);
-    setLoading(true);
+  <div class="pricing-grid">
+    <!-- Starter -->
+    <div class="price-card reveal">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price"><sup>$</sup>49</div>
+      <div class="plan-period">per month · up to 5 users</div>
+      <div class="plan-desc">Perfect for small teams just getting off paper and WhatsApp. Core tools to run your first projects properly.</div>
+      <ul class="plan-features">
+        <li>Up to 5 active projects</li>
+        <li>Mobile field app (iOS & Android)</li>
+        <li>Basic invoicing & job costing</li>
+        <li>Document storage (10GB)</li>
+        <li>Basic reporting dashboard</li>
+        <li>Email support</li>
+      </ul>
+      <a href="#cta" class="btn-plan btn-plan-outline">Start Free Trial</a>
+    </div>
 
-    const context = `You are BuildIQ, an AI assistant for a construction project management SaaS platform used by Nigerian/African contractors. The user manages these projects: ${PROJECTS.map(p=>`${p.name} (${p.progress}% complete, budget ${fmt(p.budget)}, spent ${fmt(p.spent)}, status: ${p.status})`).join("; ")}. Outstanding invoices: ${INVOICES.filter(i=>i.status!=="paid").map(i=>`${i.id} - ${fmt(i.amount)} from ${i.client} (${i.status})`).join("; ")}. Team members: ${TEAM.map(t=>t.name+" ("+t.role+")").join(", ")}. Answer concisely and helpfully as a construction domain expert. Format with line breaks for readability. Keep under 200 words.`;
+    <!-- Pro -->
+    <div class="price-card popular reveal">
+      <div class="popular-badge">Most Popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price"><sup>$</sup>149</div>
+      <div class="plan-period">per month · up to 25 users</div>
+      <div class="plan-desc">Everything you need to run a serious contracting business with full AI features and advanced financials.</div>
+      <ul class="plan-features">
+        <li>Unlimited projects</li>
+        <li>All AI features (voice reports, risk flagging, smart estimates)</li>
+        <li>Advanced job costing & change orders</li>
+        <li>Subcontractor portal</li>
+        <li>Document storage (100GB)</li>
+        <li>Priority support + onboarding call</li>
+      </ul>
+      <a href="#cta" class="btn-plan btn-plan-primary">Start Free Trial</a>
+    </div>
 
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:1000,
-          system: context,
-          messages:[...messages.filter(m=>m.role!="ai").map(m=>({role:"user",content:m.text})), {role:"user",content:userMsg}]
-        })
-      });
-      const data = await res.json();
-      const reply = data.content?.[0]?.text || "Sorry, I couldn't process that.";
-      setMessages(prev=>[...prev, {role:"ai",text:reply}]);
-    } catch(e) {
-      setMessages(prev=>[...prev, {role:"ai",text:"Connection error. Please try again."}]);
+    <!-- Enterprise -->
+    <div class="price-card reveal">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price" style="font-size:36px">Custom</div>
+      <div class="plan-period">Tailored for large teams</div>
+      <div class="plan-desc">For firms with 50+ workers or complex multi-project portfolios. White-label options available.</div>
+      <ul class="plan-features">
+        <li>Unlimited users & projects</li>
+        <li>Custom integrations (ERP, accounting)</li>
+        <li>White-label option</li>
+        <li>Dedicated account manager</li>
+        <li>Custom reporting & BI export</li>
+        <li>SLA + 24/7 support</li>
+      </ul>
+      <a href="mailto:enterprise@buildops.io" class="btn-plan btn-plan-outline">Contact Sales</a>
+    </div>
+  </div>
+
+  <p style="text-align:center;margin-top:28px;font-size:14px;color:var(--muted)">Annual billing saves you 20%. NGN and GHS pricing available. <a href="#cta" style="color:var(--orange);text-decoration:none">Talk to us →</a></p>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="cta-inner reveal">
+    <p class="section-tag" style="text-align:center">Get Started Today</p>
+    <h2 class="cta-title">Stop running your business<br />on WhatsApp.</h2>
+    <p class="cta-sub">Join 500+ contractors who've replaced the chaos with BuildOps. Set up your first project in under 10 minutes. No credit card required.</p>
+    <div class="cta-form">
+      <input type="email" class="cta-input" placeholder="Your work email address" />
+      <a href="#" class="btn-primary" style="white-space:nowrap">Get Free Access</a>
+    </div>
+    <p class="cta-note">14-day free trial · No credit card required · Cancel anytime · Setup in 10 minutes</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <div class="footer-logo">Build<span style="color:var(--orange)">Ops</span></div>
+        <p class="footer-tagline">The construction management platform built for small-to-medium contractors in Africa and beyond. Run your business like a pro.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Product</div>
+        <ul class="footer-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#ai">AI Tools</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#">Mobile App</a></li>
+          <li><a href="#">Integrations</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <ul class="footer-links">
+          <li><a href="#">About Us</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Support</div>
+        <ul class="footer-links">
+          <li><a href="#">Help Center</a></li>
+          <li><a href="#">Onboarding Guide</a></li>
+          <li><a href="#">Community</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 BuildOps Technologies Ltd. All rights reserved.</span>
+      <span>Made for contractors who build Africa. 🏗️</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+  reveals.forEach(el => observer.observe(el));
+
+  // Navbar scroll effect
+  window.addEventListener('scroll', () => {
+    const nav = document.getElementById('navbar');
+    if (window.scrollY > 40) {
+      nav.style.boxShadow = '0 4px 24px rgba(0,0,0,0.08)';
+    } else {
+      nav.style.boxShadow = 'none';
     }
-    setLoading(false);
-  };
+  });
 
-  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages, loading]);
+  // Mobile menu
+  function toggleMenu() {
+    const links = document.querySelector('.nav-links');
+    links.style.display = links.style.display === 'flex' ? 'none' : 'flex';
+    links.style.flexDirection = 'column';
+    links.style.position = 'absolute';
+    links.style.top = '70px';
+    links.style.left = '0';
+    links.style.right = '0';
+    links.style.background = 'rgba(250,248,244,0.97)';
+    links.style.padding = '20px 24px';
+    links.style.borderBottom = '1px solid var(--border)';
+    links.style.backdropFilter = 'blur(20px)';
+    links.style.gap = '16px';
+  }
 
-  return (
-    <div className="page-enter" style={{display:"flex",flexDirection:"column",height:"calc(100vh - 116px)"}}>
-      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:14,paddingBottom:16}}>
-        {/* Quick prompts */}
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}}>
-          {["⚠️ What are my biggest project risks?","💸 Analyze my cash flow","📋 Draft a daily report for Lekki Phase 2","📈 How can I improve project profitability?"].map((p,i)=>(
-            <button key={i} className="btn btn-ghost btn-sm" style={{fontSize:11.5}} onClick={()=>{setInput(p.replace(/^[^\s]+ /,""));}}>
-              {p}
-            </button>
-          ))}
-        </div>
+  // Animate progress bars on scroll
+  const progFills = document.querySelectorAll('.prog-fill');
+  const progObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.width = entry.target.getAttribute('data-width') || entry.target.style.width;
+      }
+    });
+  }, { threshold: 0.5 });
 
-        {messages.map((m,i)=>(
-          <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",flexDirection:m.role==="ai"?"row":"row-reverse"}}>
-            {m.role==="ai" && (
-              <div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0,fontWeight:800,color:"#000"}}>✦</div>
-            )}
-            <div style={{
-              maxWidth:"78%",padding:"12px 15px",borderRadius:m.role==="ai"?"4px 12px 12px 12px":"12px 4px 12px 12px",
-              background:m.role==="ai"?COLORS.card:"rgba(245,166,35,0.12)",
-              border:`1px solid ${m.role==="ai"?COLORS.border:"rgba(245,166,35,0.25)"}`,
-              fontSize:13.5,lineHeight:1.65,color:m.role==="ai"?COLORS.textSub:COLORS.text,
-              whiteSpace:"pre-wrap"
-            }}>
-              {m.text}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-            <div style={{width:32,height:32,borderRadius:8,background:`linear-gradient(135deg, ${COLORS.accent}, ${COLORS.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0,fontWeight:800,color:"#000"}}>✦</div>
-            <div style={{padding:"12px 16px",background:COLORS.card,border:`1px solid ${COLORS.border}`,borderRadius:"4px 12px 12px 12px"}}>
-              <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                {[0,1,2].map(i=>(
-                  <div key={i} style={{width:6,height:6,borderRadius:"50%",background:COLORS.accent,animation:`bounce 1.2s ${i*0.2}s infinite`,opacity:0.7}}/>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef}/>
-      </div>
+  progFills.forEach(el => {
+    el.setAttribute('data-width', el.style.width);
+    el.style.width = '0';
+    setTimeout(() => {
+      el.style.width = el.getAttribute('data-width');
+    }, 800);
+  });
 
-      <div style={{display:"flex",gap:10,paddingTop:12,borderTop:`1px solid ${COLORS.border}`}}>
-        <input
-          className="form-input" style={{flex:1}}
-          value={input}
-          onChange={e=>setInput(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendMessage()}
-          placeholder="Ask about project risks, cash flow, reports, procurement..."
-        />
-        <button className="btn btn-primary" onClick={sendMessage} disabled={loading}>
-          {loading?"…":"Send ✦"}
-        </button>
-      </div>
-      <style>{`@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }`}</style>
-    </div>
-  );
-}
-
-function FieldPage() {
-  return (
-    <div className="page-enter">
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:22}}>
-        <div/>
-        <button className="btn btn-primary">+ New Field Report</button>
-      </div>
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Daily Site Reports</div>
-            <span className="badge badge-yellow">3 Pending Review</span>
-          </div>
-          {[
-            {project:"Lekki Phase 2", reporter:"Bello Usman", date:"Today 07:42", photos:12, status:"submitted"},
-            {project:"VI Office Complex", reporter:"Taiwo Fashola", date:"Today 08:15", photos:7, status:"submitted"},
-            {project:"Abuja Road Km 12–18", reporter:"Field Team B", date:"Yesterday 17:30", photos:24, status:"reviewed"},
-          ].map((r,i)=>(
-            <div key={i} className="project-item">
-              <div style={{flex:1}}>
-                <div className="project-name">{r.project}</div>
-                <div className="project-meta">By {r.reporter} · {r.date} · {r.photos} photos</div>
-              </div>
-              <span className={`badge ${r.status==="reviewed"?"badge-green":"badge-yellow"}`}>
-                {r.status==="reviewed"?"✓ Reviewed":"● Submitted"}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="card">
-          <div className="card-header"><div className="card-title">📱 AI Report Generator</div></div>
-          <div className="card-body">
-            <div style={{background:COLORS.accentGlow,border:`1px solid rgba(245,166,35,0.2)`,borderRadius:8,padding:14,marginBottom:16,fontSize:13,color:COLORS.textSub,lineHeight:1.6}}>
-              ✦ <strong style={{color:COLORS.accent}}>AI Feature:</strong> Upload voice notes or photos from site. BuildIQ AI will automatically generate a structured daily report — tasks completed, materials used, headcount, issues flagged.
-            </div>
-            <div className="form-group">
-              <label className="form-label">Select Project</label>
-              <select className="form-input">
-                {PROJECTS.map(p=><option key={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div style={{border:`2px dashed ${COLORS.border}`,borderRadius:10,padding:28,textAlign:"center",cursor:"pointer",marginBottom:14,transition:"all 0.2s"}}
-              onMouseEnter={e=>e.currentTarget.style.borderColor=COLORS.accent}
-              onMouseLeave={e=>e.currentTarget.style.borderColor=COLORS.border}>
-              <div style={{fontSize:28,marginBottom:8}}>🎙</div>
-              <div style={{fontSize:13,color:COLORS.textSub}}>Drop voice note or photos here</div>
-              <div style={{fontSize:11,color:COLORS.textMuted,marginTop:4}}>or tap to upload · Supports MP3, M4A, JPG, PNG</div>
-            </div>
-            <button className="btn btn-primary" style={{width:"100%",justifyContent:"center"}}>
-              ✦ Generate AI Report
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DocumentsPage() {
-  const docs = [
-    {name:"Lekki Phase 2 — Contract Agreement", type:"PDF", project:"Lekki Phase 2", size:"2.1 MB", date:"Jan 15, 2026", tag:"Contract"},
-    {name:"VI Office Complex — Structural Drawings Rev.3", type:"DWG", project:"VI Office Complex", size:"18.4 MB", date:"Mar 2, 2026", tag:"Drawing"},
-    {name:"Abuja Road — Environmental Impact Assessment", type:"PDF", project:"Abuja Road", size:"5.7 MB", date:"Nov 20, 2025", tag:"Compliance"},
-    {name:"PH Warehouse — RFI #004", type:"PDF", project:"PH Warehouse", size:"0.8 MB", date:"Apr 28, 2026", tag:"RFI"},
-    {name:"Lekki Phase 2 — Safety Inspection Checklist", type:"XLS", project:"Lekki Phase 2", size:"0.3 MB", date:"Apr 30, 2026", tag:"Safety"},
-    {name:"VI Office Complex — Change Order #7", type:"PDF", project:"VI Office Complex", size:"1.2 MB", date:"May 1, 2026", tag:"Change Order"},
-  ];
-  const tagColors = {Contract:"badge-blue",Drawing:"badge-purple",Compliance:"badge-yellow",RFI:"badge-yellow",Safety:"badge-green","Change Order":"badge-red"};
-  return (
-    <div className="page-enter">
-      <div style={{display:"flex",gap:12,marginBottom:20}}>
-        <div className="search-box" style={{flex:1}}>
-          <span style={{color:COLORS.textMuted}}>🔍</span>
-          <input placeholder="Search documents, RFIs, contracts…"/>
-        </div>
-        <button className="btn btn-ghost">Filter ▾</button>
-        <button className="btn btn-primary">+ Upload</button>
-      </div>
-      <div className="card">
-        <table className="table">
-          <thead><tr><th>Name</th><th>Project</th><th>Type</th><th>Size</th><th>Date</th><th>Tag</th><th></th></tr></thead>
-          <tbody>
-            {docs.map((d,i)=>(
-              <tr key={i}>
-                <td style={{fontWeight:500,color:COLORS.text,fontSize:13}}>{d.name}</td>
-                <td style={{color:COLORS.textMuted,fontSize:12}}>{d.project}</td>
-                <td><span style={{fontFamily:"Syne",fontWeight:700,fontSize:10,color:COLORS.textMuted}}>{d.type}</span></td>
-                <td style={{color:COLORS.textMuted,fontSize:12}}>{d.size}</td>
-                <td style={{color:COLORS.textMuted,fontSize:12}}>{d.date}</td>
-                <td><span className={`badge ${tagColors[d.tag]||"badge-yellow"}`}>{d.tag}</span></td>
-                <td><button className="btn btn-ghost btn-sm" style={{fontSize:11}}>View</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── MAIN APP ─────────────────────────────────────────────────────────────────
-export default function App() {
-  const [page, setPage] = useState("dashboard");
-  const [showNewProject, setShowNewProject] = useState(false);
-  const [showNewInvoice, setShowNewInvoice] = useState(false);
-
-  const PAGE_TITLES = {
-    dashboard: {title:"Dashboard", sub:"Good morning, Emeka — here's your business overview"},
-    projects: {title:"Projects", sub:"Manage all active and completed projects"},
-    field: {title:"Field Reports", sub:"Daily logs, photos, and site updates"},
-    financials: {title:"Financials & Invoicing", sub:"Cash flow, job costing, and invoice management"},
-    documents: {title:"Documents", sub:"Contracts, drawings, RFIs, and compliance docs"},
-    team: {title:"Team", sub:"Staff, subcontractors, and permissions"},
-    ai: {title:"AI Assistant ✦", sub:"Ask anything about your projects, cash flow, or reports"},
-    reports: {title:"Reports & Analytics", sub:"Project profitability and performance insights"},
-    settings: {title:"Settings", sub:"Account, integrations, and preferences"},
-  };
-
-  return (
-    <>
-      <style>{styles}</style>
-      <div className="app">
-        {/* Sidebar */}
-        <div className="sidebar">
-          <div className="sidebar-logo">
-            <div className="logo-icon">B</div>
-            <div>
-              <div className="logo-text">BuildIQ</div>
-              <div className="logo-sub">Construction OS</div>
-            </div>
-          </div>
-          <nav className="sidebar-nav">
-            <div className="nav-section-label">Main</div>
-            {NAV.filter(n=>n.section==="main").map(n=>(
-              <div key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
-                <span className="nav-icon">{n.icon}</span>
-                <span>{n.label}</span>
-                {n.badge && <span className="nav-badge">{n.badge}</span>}
-              </div>
-            ))}
-            <div className="nav-section-label" style={{marginTop:16}}>Tools</div>
-            {NAV.filter(n=>n.section==="tools").map(n=>(
-              <div key={n.id} className={`nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
-                <span className="nav-icon">{n.icon}</span>
-                <span>{n.label}</span>
-              </div>
-            ))}
-          </nav>
-          <div className="sidebar-footer">
-            <div style={{background:COLORS.accentGlow,border:`1px solid rgba(245,166,35,0.2)`,borderRadius:8,padding:"8px 12px",marginBottom:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:COLORS.accent}}>PRO PLAN</div>
-              <div style={{fontSize:10.5,color:COLORS.textMuted,marginTop:2}}>5 active projects · Renews Jun 1</div>
-            </div>
-            <div className="user-card">
-              <div className="user-avatar">EO</div>
-              <div>
-                <div className="user-name">Emeka Okafor</div>
-                <div className="user-role">Admin · Okafor Builders Ltd</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Main */}
-        <div className="main">
-          <div className="topbar">
-            <div style={{flex:1}}>
-              <div className="topbar-title">{PAGE_TITLES[page]?.title || page}</div>
-              <div className="topbar-sub">{PAGE_TITLES[page]?.sub}</div>
-            </div>
-            <div className="search-box">
-              <span style={{color:COLORS.textMuted,fontSize:12}}>🔍</span>
-              <input placeholder="Search projects, docs…"/>
-            </div>
-            <button className="btn btn-ghost btn-icon" style={{position:"relative"}}>
-              🔔 <div className="notif-dot"/>
-            </button>
-            <button className="btn btn-primary" onClick={()=>page==="financials"?setShowNewInvoice(true):setShowNewProject(true)}>
-              + {page==="financials"?"Invoice":"New Project"}
-            </button>
-          </div>
-
-          <div className="content">
-            {page==="dashboard" && <DashboardPage onNewProject={()=>setShowNewProject(true)} onNewInvoice={()=>setShowNewInvoice(true)}/>}
-            {page==="projects" && <ProjectsPage onNewProject={()=>setShowNewProject(true)}/>}
-            {page==="financials" && <FinancialsPage onNewInvoice={()=>setShowNewInvoice(true)}/>}
-            {page==="team" && <TeamPage/>}
-            {page==="ai" && <AIPage/>}
-            {page==="field" && <FieldPage/>}
-            {page==="documents" && <DocumentsPage/>}
-            {(page==="reports"||page==="settings") && (
-              <div className="empty">
-                <div className="empty-icon">{page==="reports"?"📊":"⚙"}</div>
-                <div className="empty-text" style={{color:COLORS.textSub,fontWeight:500,fontSize:15,marginBottom:6}}>
-                  {page==="reports"?"Reports & Analytics":"Settings"}
-                </div>
-                <div className="empty-text">This module is coming soon in the next sprint.</div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {showNewProject && <NewProjectModal onClose={()=>setShowNewProject(false)}/>}
-      {showNewInvoice && <NewInvoiceModal onClose={()=>setShowNewInvoice(false)}/>}
-    </>
-  );
-}
+  // Smooth scroll for nav links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      if (href === '#') return;
+      e.preventDefault();
+      const target = document.querySelector(href);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const links = document.querySelector('.nav-links');
+        if (window.innerWidth <= 768) links.style.display = 'none';
+      }
+    });
+  });
+</script>
+</body>
+</html>
